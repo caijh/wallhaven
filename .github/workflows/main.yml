@@ -44,7 +44,7 @@ jobs:
           components: clippy
       - name: Build and Test
         run: |
-          cargo build --release --target ${{ matrix.job.os }} # Build for specified target platform
+          cargo build --release 
 
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
