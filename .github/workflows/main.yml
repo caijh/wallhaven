@@ -1,0 +1,59 @@
+name: Build and Release
+on:
+  push:
+    tags:
+      - "*"
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_NOTES_PATH: /tmp/release_notes
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Build release notes
+        run: |
+          touch ${{ env.RELEASE_NOTES_PATH }}
+          cat CHANGELOG.md | sed -e '/./{H;$!d;}' -e "x;/##\ Version\ ${{ github.ref_name }}/"'!d;' >> ${{ env.RELEASE_NOTES_PATH }}
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+          body_path: ${{ env.RELEASE_NOTES_PATH }}
+  build:
+    runs-on: ${{ matrix.job.os }}
+    needs: create-release
+    strategy:
+      matrix:
+        job:
+          - { os: "windows-latest", bin: ".exe" }
+          - { os: "ubuntu-latest", bin: "" }
+          - { os: "macos-latest", bin: ".dmg" }
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup | Rust
+        uses: ATiltedTree/setup-rust@v1
+        with:
+          rust-version: stable
+          components: clippy
+      - name: Build and Test
+        run: |
+          cargo build --release --target ${{ matrix.job.os }} # Build for specified target platform
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./target/release/wallhaven${{ matrix.job.bin }} # Update the binary name here
+          asset_name: wallhaven-${{ matrix.job.os }}${{ matrix.job.bin }} # Update the binary name here
+          asset_content_type: application/octet-stream
+
+
