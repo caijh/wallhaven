@@ -1,4 +1,5 @@
 name: Build and Release
+
 on:
   push:
     tags:
@@ -27,14 +28,13 @@ jobs:
           release_name: ${{ github.ref }}
           body_path: ${{ env.RELEASE_NOTES_PATH }}
   build:
-    runs-on: ${{ matrix.job.os }}
+    runs-on: ${{ matrix.job.runs_on }}
     needs: create-release
     strategy:
       matrix:
         job:
-          - { os: "windows-latest", bin: ".exe" }
-          - { os: "ubuntu-latest", bin: "" }
-          - { os: "macos-latest", bin: ".dmg" }
+          - { runs_on: "windows-latest", os: "windows", arch: "x86_64", bin: ".exe"}
+          - { runs_on: "ubuntu-latest",  os: "linux", arch: "x86_64", bin: "" }
     steps:
       - uses: actions/checkout@v3
       - name: Setup | Rust
@@ -44,7 +44,7 @@ jobs:
           components: clippy
       - name: Build and Test
         run: |
-          cargo build --release 
+          cargo build --release
 
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
@@ -53,7 +53,7 @@ jobs:
         with:
           upload_url: ${{ needs.create-release.outputs.upload_url }}
           asset_path: ./target/release/wallhaven${{ matrix.job.bin }} # Update the binary name here
-          asset_name: wallhaven-${{ matrix.job.os }}${{ matrix.job.bin }} # Update the binary name here
+          asset_name: wallhaven-${{ matrix.job.os }}-${{ matrix.job.arch }}${{ matrix.job.bin }} # Update the binary name here
           asset_content_type: application/octet-stream
 
 
